@@ -10,17 +10,52 @@
     "categories": [
         "Languages"
     ],
+    "activationEvents": [
+        "onLanguage:ssh_config",
+        "onCommand:ssh.run"
+    ],
+    "main": "./out/src/extension",
     "contributes": {
-        "languages": [{
-            "id": "ssh_config",
-            "aliases": ["ssh config", "ssh_config"],
-            "filenames": ["ssh.config"],
-            "configuration": "./language-configuration.json"
-        }],
-        "grammars": [{
-            "language": "ssh_config",
-            "scopeName": "config.ssh",
-            "path": "./syntaxes/ssh_config.tmLanguage.json"
-        }]
+        "languages": [
+            {
+                "id": "ssh_config",
+                "aliases": [
+                    "ssh config",
+                    "ssh_config"
+                ],
+                "filenamePatterns": [
+                    "**/.ssh/config"
+                ],
+                "filenames": [
+                    "ssh.config"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "ssh_config",
+                "scopeName": "source.config.ssh",
+                "path": "./syntaxes/ssh_config.tmLanguage.json"
+            }
+        ],
+        "commands": [
+            {
+                "command": "ssh.run",
+                "title": "Run ssh"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "tsc -p ./",
+        "compile": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "test": "node ./node_modules/vscode/bin/test"
+    },
+    "devDependencies": {
+        "@types/node": "^7.0.13",
+        "tslint": "^5.1.0",
+        "typescript": "^2.3.1",
+        "vscode": "^1.0.0"
     }
 }
