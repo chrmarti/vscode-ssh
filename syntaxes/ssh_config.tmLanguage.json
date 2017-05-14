@@ -7,19 +7,28 @@
 		},
 		{
 			"include": "#values"
+		},
+		{
+			"include": "#comments"
 		}
 	],
 	"repository": {
 		"properties": {
 			"patterns": [{
 				"name": "support.type.property-name.ssh_config",
-				"match": "^\\s*[^\\s]+"
+				"match": "^\\s*[^\\s#]+"
 			}]
 		},
 		"values": {
 			"patterns": [{
 				"name": "string.quoted.double.ssh_config",
-				"match": ".+"
+				"match": "[^#]+"
+			}]
+		},
+		"comments": {
+			"patterns": [{
+				"name": "comment.line.hash.azcli",
+				"match": "#.*"
 			}]
 		}
 	},
