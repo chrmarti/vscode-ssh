@@ -3,11 +3,38 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { join, relative } from 'path';
+import { readFile } from 'fs';
 
-import { ExtensionContext, commands, workspace, Uri, window } from 'vscode';
+import { ExtensionContext, commands, workspace, Uri, window, languages, TextDocument, Position, CompletionItem } from 'vscode';
 
 export function activate(context: ExtensionContext) {
     context.subscriptions.push(commands.registerCommand('ssh.run', () => run()));
+    context.subscriptions.push(languages.registerCompletionItemProvider('ssh_config', { provideCompletionItems }, ' '));
+}
+
+interface Option {
+    label: string;
+    documentation: string;
+}
+
+let options: Promise<Option[]>
+function getOptions() {
+    return options || (options = new Promise((resolve, reject) => {
+        readFile(join(__dirname, '../../thirdparty/options.json'), { encoding: 'utf8' }, (err, content) => {
+            err ? reject(err) : resolve(JSON.parse(content));
+        });
+    }));
+}
+
+function provideCompletionItems(document: TextDocument, position: Position): Promise<CompletionItem[]> | undefined {
+    const prefix = document.lineAt(position).text.substr(0, position.character);
+    if (/^\s*[^\s]*$/.test(prefix)) {
+        return getOptions().then(options => options.map(option => {
+            const item = new CompletionItem(option.label);
+            item.documentation = option.documentation;
+            return item;
+        }));
+    }
 }
 
 function run() {
@@ -40,7 +67,7 @@ function loadHosts(configFile: string) {
         while (host = (r.exec(text) || [])[1]) {
             hosts.push({
                 label: host,
-                description: 'description',
+                description: configFile,
                 configFile
             });
         }
