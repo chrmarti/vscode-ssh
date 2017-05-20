@@ -12,7 +12,7 @@
     ],
     "activationEvents": [
         "onLanguage:ssh_config",
-        "onCommand:ssh.run"
+        "onCommand:ssh.launch"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -41,8 +41,8 @@
         ],
         "commands": [
             {
-                "command": "ssh.run",
-                "title": "Run ssh"
+                "command": "ssh.launch",
+                "title": "SSH: Launch from configuration"
             }
         ]
     },

@@ -8,7 +8,7 @@ import { readFile } from 'fs';
 import { ExtensionContext, commands, workspace, Uri, window, languages, TextDocument, Position, CompletionItem } from 'vscode';
 
 export function activate(context: ExtensionContext) {
-    context.subscriptions.push(commands.registerCommand('ssh.run', () => run()));
+    context.subscriptions.push(commands.registerCommand('ssh.launch', () => run()));
     context.subscriptions.push(languages.registerCompletionItemProvider('ssh_config', { provideCompletionItems }, ' '));
 }
 
@@ -46,11 +46,11 @@ function run() {
     Promise.all(configFiles.map(loadHosts))
     .then(hostsArray => {
         const hosts = hostsArray.reduce((all, hosts) => all.concat(hosts), []);
-        return window.showQuickPick(hosts)
+        return window.showQuickPick(hosts.sort((a, b) => a.label.localeCompare(b.label)), { placeHolder: 'Choose which configuration to launch' })
         .then(host => {
             if (host) {
                 const terminal = window.createTerminal();
-                terminal.sendText(host.configFile !== defaultConfig ? `ssh -F ${workspace.rootPath ? relative(workspace.rootPath, host.configFile) : host.configFile} ${host.label}` : `ssh ${host.label}`, false);
+                terminal.sendText(host.configFile !== defaultConfig ? `ssh -F ${relativize(host.configFile)} ${host.label}` : `ssh ${host.label}`, false);
                 terminal.show();
             }
         });
@@ -67,7 +67,7 @@ function loadHosts(configFile: string) {
         while (host = (r.exec(text) || [])[1]) {
             hosts.push({
                 label: host,
-                description: configFile,
+                description: relativize(configFile),
                 configFile
             });
         }
@@ -76,6 +76,17 @@ function loadHosts(configFile: string) {
         // Ignore, file might not exist.
         return [];
     });
+}
+
+function relativize(path: string) {
+    const options = [path];
+    if (process.env.HOME) {
+        options.push('~/' + relative(process.env.HOME, path));
+    }
+    if (workspace.rootPath) {
+        options.push(relative(workspace.rootPath, path));
+    }
+    return options.reduce((min, path) => min.length <= path.length ? min : path);
 }
 
 export function deactivate() {
