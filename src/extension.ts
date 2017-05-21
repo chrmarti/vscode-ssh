@@ -5,10 +5,23 @@
 import { join, relative } from 'path';
 import { readFile, lstat } from 'fs';
 
-import { ExtensionContext, commands, workspace, Uri, window, languages, TextDocument, Position, CompletionItem } from 'vscode';
+import { ExtensionContext, Terminal, SnippetString, commands, workspace, Uri, window, languages, TextDocument, Position, CompletionItem } from 'vscode';
+
+declare module 'vscode' {
+    export interface Terminal {
+        onData?(callback: (data: string) => any): void;
+    }
+}
 
 const userConfig = process.env.HOME && join(process.env.HOME, '.ssh/config');
 const workspaceConfig = workspace.rootPath && join(workspace.rootPath, '.vscode/ssh.config');
+
+const snippets: CompletionItem[] = [(() => {
+    const item = new CompletionItem('Configure tunnel');
+    item.documentation = 'Insert a template for configuring a tunnel connection.'
+    item.insertText = new SnippetString('Host ${1:alias}\n    HostName ${2:fqn}\n    LocalForward ${4:port} ${5:localhost}:${4:port}\n    User ${6:user}');
+    return item;
+})()];
 
 export function activate(context: ExtensionContext) {
     context.subscriptions.push(commands.registerCommand('ssh.launch', () => launch()));
@@ -20,6 +33,12 @@ export function activate(context: ExtensionContext) {
 interface Option {
     label: string;
     documentation: string;
+}
+
+interface Host {
+    label: string;
+    description: string;
+    configFile: string;
 }
 
 let options: Promise<Option[]>
@@ -38,7 +57,7 @@ function provideCompletionItems(document: TextDocument, position: Position): Pro
             const item = new CompletionItem(option.label);
             item.documentation = option.documentation;
             return item;
-        }));
+        }).concat(snippets));
     }
 }
 
@@ -57,31 +76,47 @@ function launch() {
                 .then(host => {
                     if (host) {
                         const terminal = window.createTerminal();
-                        terminal.sendText(host.configFile !== userConfig ? `ssh -F ${relativize(host.configFile)} ${host.label}` : `ssh ${host.label}`, false);
                         terminal.show();
+                        if (terminal.onData) {
+                            let sent = false;
+                            const send = () => {
+                                if (!sent) {
+                                    sent = true;
+                                    sendLaunch(terminal, host);
+                                }
+                            }
+                            terminal.onData(send);
+                            setTimeout(send, 3000);
+                        } else {
+                            sendLaunch(terminal, host);
+                        }
                     }
                 });
         });
 }
 
+function sendLaunch(terminal: Terminal, host: Host) {
+    terminal.sendText(host.configFile !== userConfig ? `ssh -F ${relativize(host.configFile)} ${host.label}` : `ssh ${host.label}`, false);
+}
+
 function loadHosts(configFile: string) {
-    return workspace.openTextDocument(Uri.file(configFile))
-        .then(config => {
-            const text = config.getText();
-            const r = /^Host\s+([^\s]+)/gm;
-            const hosts = [];
-            let host;
-            while (host = (r.exec(text) || [])[1]) {
-                hosts.push({
-                    label: host,
-                    description: relativize(configFile),
-                    configFile
-                });
-            }
-            return hosts;
-        }, err => {
-            // Ignore, file might not exist.
-            return [];
+    return fileExists(configFile)
+        .then(exists => {
+            return exists ? workspace.openTextDocument(Uri.file(configFile))
+                .then(config => {
+                    const text = config.getText();
+                    const r = /^Host\s+([^\s]+)/gm;
+                    const hosts: Host[] = [];
+                    let host;
+                    while (host = (r.exec(text) || [])[1]) {
+                        hosts.push({
+                            label: host,
+                            description: relativize(configFile),
+                            configFile
+                        });
+                    }
+                    return hosts;
+                }) : [];
         });
 }
 
