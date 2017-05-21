@@ -45,15 +45,15 @@
         "commands": [
             {
                 "command": "ssh.launch",
-                "title": "SSH: Launch from configuration"
+                "title": "SSH: Launch from Configuration"
             },
             {
                 "command": "ssh.openUserConfig",
-                "title": "SSH: Open user configuration"
+                "title": "SSH: Open User Configuration"
             },
             {
                 "command": "ssh.openWorkspaceConfig",
-                "title": "SSH: Open workspace configuration"
+                "title": "SSH: Open Workspace Configuration"
             }
         ]
     },
