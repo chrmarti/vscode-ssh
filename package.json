@@ -12,7 +12,9 @@
     ],
     "activationEvents": [
         "onLanguage:ssh_config",
-        "onCommand:ssh.launch"
+        "onCommand:ssh.launch",
+        "onCommand:ssh.openUserConfig",
+        "onCommand:ssh.openWorkspaceConfig"
     ],
     "main": "./out/src/extension",
     "contributes": {
@@ -27,7 +29,8 @@
                     "**/.ssh/config"
                 ],
                 "filenames": [
-                    "ssh.config"
+                    "ssh.config",
+                    "config"
                 ],
                 "configuration": "./language-configuration.json"
             }
@@ -43,6 +46,14 @@
             {
                 "command": "ssh.launch",
                 "title": "SSH: Launch from configuration"
+            },
+            {
+                "command": "ssh.openUserConfig",
+                "title": "SSH: Open user configuration"
+            },
+            {
+                "command": "ssh.openWorkspaceConfig",
+                "title": "SSH: Open workspace configuration"
             }
         ]
     },
