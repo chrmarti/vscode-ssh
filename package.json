@@ -4,11 +4,21 @@
     "description": "ssh integration",
     "version": "0.0.1",
     "publisher": "chrmarti",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/chrmarti/vscode-ssh.git"
+    },
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/chrmarti/vscode-ssh/issues"
+    },
+    "icon": "images/icon.png",
     "engines": {
         "vscode": "^1.12.0"
     },
     "categories": [
-        "Languages"
+        "Languages",
+        "Snippets"
     ],
     "activationEvents": [
         "onLanguage:ssh_config",
