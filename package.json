@@ -1,8 +1,8 @@
 {
     "name": "ssh",
-    "displayName": "ssh",
-    "description": "ssh integration",
-    "version": "0.0.1",
+    "displayName": "SSH Tooling",
+    "description": "Edit SSH config and launch host configrations",
+    "version": "0.0.2",
     "publisher": "chrmarti",
     "repository": {
         "type": "git",

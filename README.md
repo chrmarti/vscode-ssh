@@ -6,6 +6,10 @@ Edit the SSH config file with syntax coloring, content assist and snippets. Laun
 
 ## Release Notes
 
+### 0.0.2
+
+- Polish title and description.
+
 ### 0.0.1
 
 - Initial release.
