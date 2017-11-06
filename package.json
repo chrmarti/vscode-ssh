@@ -2,7 +2,7 @@
     "name": "ssh",
     "displayName": "SSH Tooling",
     "description": "Edit SSH config and launch host configrations",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "publisher": "chrmarti",
     "repository": {
         "type": "git",
@@ -14,11 +14,14 @@
     },
     "icon": "images/icon.png",
     "engines": {
-        "vscode": "^1.12.0"
+        "vscode": "^1.18.0"
     },
     "categories": [
         "Languages",
         "Snippets"
+    ],
+    "keywords": [
+        "multi-root ready"
     ],
     "activationEvents": [
         "onLanguage:ssh_config",

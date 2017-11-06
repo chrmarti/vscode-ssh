@@ -14,7 +14,6 @@ declare module 'vscode' {
 }
 
 const userConfig = process.env.HOME && join(process.env.HOME, '.ssh/config');
-const workspaceConfig = workspace.rootPath && join(workspace.rootPath, '.vscode/ssh.config');
 
 const snippets: CompletionItem[] = [(() => {
     const item = new CompletionItem('Configure tunnel');
@@ -26,7 +25,7 @@ const snippets: CompletionItem[] = [(() => {
 export function activate(context: ExtensionContext) {
     context.subscriptions.push(commands.registerCommand('ssh.launch', () => launch()));
     context.subscriptions.push(commands.registerCommand('ssh.openUserConfig', () => openUserConfig()));
-    context.subscriptions.push(commands.registerCommand('ssh.openWorkspaceConfig', () => openWorkspaceConfig()));
+    context.subscriptions.push(commands.registerCommand('ssh.openWorkspaceConfig', () => openWorkspaceConfig().catch(console.error)));
     context.subscriptions.push(languages.registerCompletionItemProvider('ssh_config', { provideCompletionItems }, ' '));
 }
 
@@ -66,8 +65,10 @@ function launch() {
     if (userConfig) {
         configFiles.push(userConfig);
     }
-    if (workspaceConfig) {
-        configFiles.push(workspaceConfig);
+    if (workspace.workspaceFolders) {
+        for (const folder of workspace.workspaceFolders) {
+            configFiles.push(workspaceConfigPath(folder.uri.fsPath));
+        }
     }
     Promise.all(configFiles.map(loadHosts))
         .then(hostsArray => {
@@ -96,7 +97,7 @@ function launch() {
 }
 
 function sendLaunch(terminal: Terminal, host: Host) {
-    terminal.sendText(host.configFile !== userConfig ? `ssh -F ${relativize(host.configFile)} ${host.label}` : `ssh ${host.label}`, false);
+    terminal.sendText(host.configFile !== userConfig ? `ssh -F ${workspace.workspaceFolders && workspace.workspaceFolders.length > 1 ? relativize(host.configFile) : workspaceConfigPath('.')} ${host.label}` : `ssh ${host.label}`, false);
 }
 
 function loadHosts(configFile: string) {
@@ -111,7 +112,7 @@ function loadHosts(configFile: string) {
                     while (host = (r.exec(text) || [])[1]) {
                         hosts.push({
                             label: host,
-                            description: relativize(configFile),
+                            description: shortPath(configFile),
                             configFile
                         });
                     }
@@ -121,12 +122,21 @@ function loadHosts(configFile: string) {
 }
 
 function relativize(path: string) {
+    if (process.env.HOME) {
+        return '~/' + relative(process.env.HOME, path);
+    }
+    return path;
+}
+
+function shortPath(path: string) {
     const options = [path];
     if (process.env.HOME) {
         options.push('~/' + relative(process.env.HOME, path));
     }
-    if (workspace.rootPath) {
-        options.push(relative(workspace.rootPath, path));
+    if (workspace.workspaceFolders) {
+        for (const folder of workspace.workspaceFolders) {
+            options.push(join(folder.name, relative(folder.uri.fsPath, path)));
+        }
     }
     return options.reduce((min, path) => min.length <= path.length ? min : path);
 }
@@ -138,11 +148,19 @@ function openUserConfig() {
     return openConfig(userConfig);
 }
 
-function openWorkspaceConfig() {
-    if (!workspaceConfig) {
-        return window.showInformationMessage('No workspace opened');
+async function openWorkspaceConfig() {
+    const folders = workspace.workspaceFolders;
+    if (!folders || !folders.length) {
+        return window.showInformationMessage('No folder opened');
     }
-    return openConfig(workspaceConfig);
+    const folder = folders.length > 1 ? await window.showWorkspaceFolderPick() : folders[0];
+    if (folder) {
+        return openConfig(workspaceConfigPath(folder.uri.fsPath));
+    }
+}
+
+function workspaceConfigPath(folderPath: string) {
+    return join(folderPath, '.vscode/ssh.config');
 }
 
 function openConfig(path: string) {
