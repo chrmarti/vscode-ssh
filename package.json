@@ -2,7 +2,7 @@
     "name": "ssh",
     "displayName": "SSH Tooling",
     "description": "Edit SSH config and launch host configrations",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "publisher": "chrmarti",
     "repository": {
         "type": "git",

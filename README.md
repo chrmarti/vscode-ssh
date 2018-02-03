@@ -6,6 +6,10 @@ Edit the SSH config file with syntax coloring, content assist and snippets. Laun
 
 ## Release Notes
 
+### 0.0.4
+
+- Open terminal in config file's workspace folder.
+
 ### 0.0.3
 
 - Multi-root support.
