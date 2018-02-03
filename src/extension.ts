@@ -5,13 +5,7 @@
 import { join, relative } from 'path';
 import { readFile, lstat } from 'fs';
 
-import { ExtensionContext, Terminal, SnippetString, commands, workspace, Uri, window, languages, TextDocument, Position, CompletionItem } from 'vscode';
-
-declare module 'vscode' {
-    export interface Terminal {
-        onData?(callback: (data: string) => any): void;
-    }
-}
+import { ExtensionContext, SnippetString, commands, workspace, Uri, window, languages, TextDocument, Position, CompletionItem, WorkspaceFolder } from 'vscode';
 
 const userConfig = process.env.HOME && join(process.env.HOME, '.ssh/config');
 
@@ -23,7 +17,7 @@ const snippets: CompletionItem[] = [(() => {
 })()];
 
 export function activate(context: ExtensionContext) {
-    context.subscriptions.push(commands.registerCommand('ssh.launch', () => launch()));
+    context.subscriptions.push(commands.registerCommand('ssh.launch', () => launch().catch(console.error)));
     context.subscriptions.push(commands.registerCommand('ssh.openUserConfig', () => openUserConfig()));
     context.subscriptions.push(commands.registerCommand('ssh.openWorkspaceConfig', () => openWorkspaceConfig().catch(console.error)));
     context.subscriptions.push(languages.registerCompletionItemProvider('ssh_config', { provideCompletionItems }, ' '));
@@ -34,10 +28,15 @@ interface Option {
     documentation: string;
 }
 
+interface ConfigLocation {
+    folder?: WorkspaceFolder;
+    file: string;
+}
+
 interface Host {
     label: string;
     description: string;
-    configFile: string;
+    config: ConfigLocation;
 }
 
 let options: Promise<Option[]>
@@ -61,71 +60,55 @@ function provideCompletionItems(document: TextDocument, position: Position): Pro
 }
 
 function launch() {
-    const configFiles: string[] = [];
+    const configLocations: ConfigLocation[] = [];
     if (userConfig) {
-        configFiles.push(userConfig);
+        configLocations.push({ file: userConfig });
     }
     if (workspace.workspaceFolders) {
         for (const folder of workspace.workspaceFolders) {
-            configFiles.push(workspaceConfigPath(folder.uri.fsPath));
+            configLocations.push({
+                folder,
+                file: workspaceConfigPath(folder.uri.fsPath)
+            });
         }
     }
-    Promise.all(configFiles.map(loadHosts))
+    return Promise.all(configLocations.map(loadHosts))
         .then(hostsArray => {
             const hosts = hostsArray.reduce((all, hosts) => all.concat(hosts), []);
             return window.showQuickPick(hosts.sort((a, b) => a.label.localeCompare(b.label)), { placeHolder: 'Choose which configuration to launch' })
                 .then(host => {
                     if (host) {
-                        const terminal = window.createTerminal();
+                        const folder = host.config.folder;
+                        const terminal = window.createTerminal({
+                            cwd: folder && folder.uri.fsPath
+                        });
                         terminal.show();
-                        if (terminal.onData) {
-                            let sent = false;
-                            const send = () => {
-                                if (!sent) {
-                                    sent = true;
-                                    sendLaunch(terminal, host);
-                                }
-                            }
-                            terminal.onData(send);
-                            setTimeout(send, 3000);
-                        } else {
-                            sendLaunch(terminal, host);
-                        }
+                        terminal.sendText(folder ? `ssh -F ${workspaceConfigPath('.')} ${host.label}` : `ssh ${host.label}`, false);
                     }
                 });
         });
 }
 
-function sendLaunch(terminal: Terminal, host: Host) {
-    terminal.sendText(host.configFile !== userConfig ? `ssh -F ${workspace.workspaceFolders && workspace.workspaceFolders.length > 1 ? relativize(host.configFile) : workspaceConfigPath('.')} ${host.label}` : `ssh ${host.label}`, false);
-}
-
-function loadHosts(configFile: string) {
-    return fileExists(configFile)
+function loadHosts(config: ConfigLocation) {
+    const { file } = config;
+    return fileExists(file)
         .then(exists => {
-            return exists ? workspace.openTextDocument(Uri.file(configFile))
-                .then(config => {
-                    const text = config.getText();
+            return exists ? workspace.openTextDocument(Uri.file(file))
+                .then(content => {
+                    const text = content.getText();
                     const r = /^Host\s+([^\s]+)/gm;
                     const hosts: Host[] = [];
                     let host;
                     while (host = (r.exec(text) || [])[1]) {
                         hosts.push({
                             label: host,
-                            description: shortPath(configFile),
-                            configFile
+                            description: shortPath(file),
+                            config: config
                         });
                     }
                     return hosts;
                 }) : [];
         });
-}
-
-function relativize(path: string) {
-    if (process.env.HOME) {
-        return '~/' + relative(process.env.HOME, path);
-    }
-    return path;
 }
 
 function shortPath(path: string) {
