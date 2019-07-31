@@ -7,7 +7,8 @@ import { readFile, lstat } from 'fs';
 
 import { ExtensionContext, SnippetString, commands, workspace, Uri, window, languages, TextDocument, Position, CompletionItem, WorkspaceFolder } from 'vscode';
 
-const userConfig = process.env.HOME && join(process.env.HOME, '.ssh/config');
+const userHome = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
+const userConfig = userHome && join(userHome, '.ssh/config');
 
 const snippets: CompletionItem[] = [(() => {
     const item = new CompletionItem('Configure tunnel');
